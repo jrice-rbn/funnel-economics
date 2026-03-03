@@ -76,6 +76,7 @@ const S1_CL=36,S1_AG=S1_CL*R_AGT,S1_CO=S1_CL*R_CON;
 const REV_MULT=20,FLOOR_VAL=150e6,TARGET_VAL=2e9;
 const SLIDER_MIN_CL=S0_CL,SLIDER_MAX_CL=S1_CL;
 const Y_START=10,Y_END=75,EV_MAX=2e9;
+const CON_PER_FTE=8;
 const DUR=15000,G_START=0.36,G_END=0.86;
 const D_CON=0,D_AGT=0.10,D_CL=0.19;
 
@@ -153,6 +154,9 @@ if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rl,cx,by-14*dpr,{size:13,colo
 b.l.split('\n').forEach((ln,li)=>{txt(ln,cx,cB+(18+li*15)*dpr,{size:12,color:MED,weight:'600'});});
 if(b.frac){const lines=b.l.split('\n').length;txt(b.frac,cx,cB+(20+lines*15)*dpr,{size:8,color:DIM});}
 });
+
+// ARS FTEs badge
+{const fte=Math.max(1,Math.ceil((con*intro)/CON_PER_FTE));const bp=barPos[0];const ft=fte+' ARS FTE'+(fte!==1?'s':'');const badgeY=cB+56*dpr,badgeH=20*dpr,badgePad=14*dpr;ctx.save();ctx.font=`700 ${10*dpr}px -apple-system,BlinkMacSystemFont,sans-serif`;const tw=ctx.measureText(ft).width;ctx.restore();const badgeW=tw+badgePad*2,badgeX=bp.cx-badgeW/2;ctx.save();ctx.globalAlpha=intro*.85;rR(badgeX,badgeY,badgeW,badgeH,badgeH/2);ctx.fillStyle='rgba(42,108,184,0.25)';ctx.strokeStyle='rgba(58,130,212,0.5)';ctx.lineWidth=1*dpr;ctx.fill();ctx.stroke();ctx.restore();ctx.save();ctx.globalAlpha=intro;txt(ft,bp.cx,badgeY+badgeH/2,{size:10,color:BLB,weight:'700'});ctx.restore();}
 
 // dotted line: closings bar → left Y-axis
 {const bp=barPos[2];if(bp.bH>=12*dpr){ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=GLB;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx,bp.by);ctx.lineTo(cL,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(cL,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=GLB;ctx.fill();ctx.restore();}}

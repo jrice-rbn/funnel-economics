@@ -6,17 +6,7 @@
 <title>Funnel Economics — RBN Growth Model</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #091525;
-    color: #d0dff0;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    overflow: hidden;
-  }
+  body { background: #091525; color: #d0dff0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
   #gate { display: flex; flex-direction: column; align-items: center; gap: 16px; }
   #gate h2 { font-size: 22px; color: #fff; font-weight: 600; }
   #gate input { background: rgba(26,54,100,0.3); border: 1px solid rgba(42,108,184,0.4); color: #c8daf0; padding: 12px 20px; border-radius: 8px; font-size: 16px; font-family: inherit; outline: none; width: 240px; text-align: center; letter-spacing: 2px; }
@@ -67,48 +57,40 @@
 </div>
 <script>
 const HASH='cb63f124a0d5c1ca4291a243f8a553b56ea32395a56ae9bfd348ba1d4fdef013';
-async function sha256(str){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-async function tryAuth(){const pw=document.getElementById('pwInput').value;const h=await sha256(pw);if(h===HASH){sessionStorage.setItem('kipp_auth','1');showApp();}else{document.getElementById('pwError').textContent='Incorrect password';document.getElementById('pwInput').value='';document.getElementById('pwInput').focus();}}
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
+async function tryAuth(){const pw=document.getElementById('pwInput').value;if(await sha256(pw)===HASH){sessionStorage.setItem('kipp_auth','1');showApp();}else{document.getElementById('pwError').textContent='Incorrect password';document.getElementById('pwInput').value='';document.getElementById('pwInput').focus();}}
 document.getElementById('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')tryAuth();});
 function showApp(){document.getElementById('gate').style.display='none';document.getElementById('container').style.display='block';initApp();}
-if(sessionStorage.getItem('kipp_auth')==='1'){showApp();}
+if(sessionStorage.getItem('kipp_auth')==='1') showApp();
 
-let appInitialized=false;
+let appInit=false;
 function initApp(){
-if(appInitialized)return;appInitialized=true;
+if(appInit)return; appInit=true;
 
-const canvas=document.getElementById('chart');
-const ctx=canvas.getContext('2d');
-const slider=document.getElementById('valSlider');
-const sliderVal=document.getElementById('sliderVal');
+const canvas=document.getElementById('chart'),ctx=canvas.getContext('2d');
+const slider=document.getElementById('valSlider'),sliderVal=document.getElementById('sliderVal');
 
 const R_CON=4.8,R_AGT=1.4;
 const S0_CL=1,S0_AG=S0_CL*R_AGT,S0_CO=S0_CL*R_CON;
-const S1_CL=7.5,S1_AG=S1_CL*R_AGT,S1_CO=36;
-const REV_PER_CLOSE=12000,REV_MULT=20;
-const FLOOR_VAL=150e6,TARGET_VAL=2e9;
-const CON_PER_FTE=8;
+const S1_CL=36,S1_AG=S1_CL*R_AGT,S1_CO=S1_CL*R_CON;
+const REV_MULT=20,FLOOR_VAL=150e6,TARGET_VAL=2e9;
 const SLIDER_MIN_CL=S0_CL,SLIDER_MAX_CL=S1_CL;
-const Y_START=2.0,Y_END=15;
-const DUR=15000;
-const G_START=0.36,G_END=0.86;
+const Y_START=10,Y_END=75,EV_MAX=2e9;
+const DUR=15000,G_START=0.36,G_END=0.86;
 const D_CON=0,D_AGT=0.10,D_CL=0.19;
 
-let animStart=null,paused=false,progress=0;
-let sliderDragging=false,sliderCls=SLIDER_MIN_CL;
-
+let animStart=null,paused=false,progress=0,sliderDragging=false,sliderCls=SLIDER_MIN_CL;
 let W,H,dpr,cL,cR,cT,cB,cW,cH;
-function resize(){dpr=window.devicePixelRatio||1;const r=canvas.getBoundingClientRect();W=r.width*dpr;H=(r.width/1.72)*dpr;canvas.width=W;canvas.height=H;canvas.style.height=(H/dpr)+'px';cL=W*.07;cR=W*.96;cT=H*.06;cB=H*.80;cW=cR-cL;cH=cB-cT;}
 
+function resize(){dpr=window.devicePixelRatio||1;const r=canvas.getBoundingClientRect();W=r.width*dpr;H=(r.width/1.72)*dpr;canvas.width=W;canvas.height=H;canvas.style.height=(H/dpr)+'px';cL=W*.08;cR=W*.96;cT=H*.06;cB=H*.80;cW=cR-cL;cH=cB-cT;}
 function eO(t){return 1-Math.pow(1-t,3);}
 function eIO(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
 function gf(t,d){const s=G_START+d;if(t<s)return 0;if(t>G_END)return 1;return eIO((t-s)/(G_END-s));}
-function calcVal(cls){const f=Math.max(0,Math.min(1,(cls-S0_CL)/(S1_CL-S0_CL)));return FLOOR_VAL+f*(TARGET_VAL-FLOOR_VAL);}
+function calcVal(c){const f=Math.max(0,Math.min(1,(c-S0_CL)/(S1_CL-S0_CL)));return FLOOR_VAL+f*(TARGET_VAL-FLOOR_VAL);}
 
 function txt(s,x,y,o){const{size=14,color='#6a8db8',align='center',baseline='middle',weight='400'}=o||{};ctx.save();ctx.font=`${weight} ${size*dpr}px -apple-system,BlinkMacSystemFont,sans-serif`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline=baseline;ctx.fillText(s,x,y);ctx.restore();}
 function rR(x,y,w,h,r){if(w<=0||h<=0)return;r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 function rB(x,y,w,h,r){if(h<1||w<1)return;r=Math.min(r,h/2,w/2);ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h);ctx.closePath();}
-function vY(v,maxY){return cB-(v/maxY)*cH;}
 function sh(hex,a){const n=parseInt(hex.replace('#',''),16);const r=Math.max(0,Math.min(255,(n>>16)+a));const g=Math.max(0,Math.min(255,((n>>8)&0xFF)+a));const b=Math.max(0,Math.min(255,(n&0xFF)+a));return`#${((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}`;}
 function fV(v){if(v>=1e9)return'$'+(v/1e9).toFixed(1)+'B';if(v>=1e6)return'$'+Math.round(v/1e6)+'M';if(v>=1e3)return'$'+Math.round(v/1e3)+'K';return'$'+Math.round(v);}
 function fN(v){return v<10?v.toFixed(1):Math.round(v).toString();}
@@ -118,7 +100,8 @@ if(intensity<.01)return;const midY=(y0+y1)/2;ctx.save();ctx.globalAlpha=intensit
 const N=big?5:3,speed=big?1.0:1.5;for(let i=0;i<N;i++){const pt=((time*speed+i/N)%1);const px=x0+(x1-x0)*pt;const pulseW=(big?40:24)*dpr;const alpha=intensity*Math.sin(pt*Math.PI)*.85;const grad=ctx.createLinearGradient(px-pulseW/2,0,px+pulseW/2,0);grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(0.3,bright);grad.addColorStop(0.5,bright);grad.addColorStop(0.7,bright);grad.addColorStop(1,'rgba(0,0,0,0)');ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=grad;ctx.shadowColor=col;ctx.shadowBlur=(big?14:8)*dpr;ctx.fillRect(px-pulseW/2,midY-(big?5:3)*dpr,pulseW,(big?10:6)*dpr);ctx.restore();}
 const edgeAlpha=intensity*.4*(0.5+0.5*Math.sin(time*8));ctx.save();ctx.globalAlpha=edgeAlpha;ctx.fillStyle=bright;ctx.shadowColor=bright;ctx.shadowBlur=16*dpr;ctx.beginPath();ctx.arc(x1,midY,(big?6:4)*dpr,0,Math.PI*2);ctx.fill();ctx.restore();}
 
-const BLU='#2a6cb8',BLB='#3a82d4',TEA='#2aaa9e',TEB='#36c8ba',GLD='#d4a843',GLB='#e8c45a',GRN='#2ecc71',GRB='#5dde9e',FTE_C='#5a8ab8',GRD='rgba(26,54,100,0.18)',DIM='#3d5a80',MED='#6a8db8',BRT='#c8daf0',ACC='#e8b84a';
+const BLU='#2a6cb8',BLB='#3a82d4',TEA='#2aaa9e',TEB='#36c8ba',GLD='#d4a843',GLB='#e8c45a',GRN='#2ecc71',GRB='#5dde9e';
+const GRD='rgba(26,54,100,0.18)',DIM='#3d5a80',MED='#6a8db8',BRT='#c8daf0',ACC='#e8b84a';
 
 function draw(t){
 ctx.clearRect(0,0,W,H);
@@ -126,83 +109,70 @@ let intro,con,agt,cls,gCo,gAg,gCl;
 if(sliderDragging){intro=1;cls=sliderCls;con=cls*R_CON;agt=cls*R_AGT;const g=Math.max(0,Math.min(1,(cls-S0_CL)/(S1_CL-S0_CL)));gCo=gAg=gCl=g;}
 else{intro=t<.06?eO(t/.06):1;gCo=gf(t,D_CON);gAg=gf(t,D_AGT);gCl=gf(t,D_CL);con=S0_CO+(S1_CO-S0_CO)*gCo;agt=S0_AG+(S1_AG-S0_AG)*gAg;cls=S0_CL+(S1_CL-S0_CL)*gCl;}
 
-const val=calcVal(cls);const rev=val/REV_MULT;const fte=Math.max(1,Math.ceil(con/CON_PER_FTE));
+const val=calcVal(cls);
 if(!sliderDragging){const sv=(cls-SLIDER_MIN_CL)/(SLIDER_MAX_CL-SLIDER_MIN_CL);slider.value=Math.round(Math.max(0,sv)*1000);sliderVal.textContent=fV(val);}
 
 const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0d1f38');bg.addColorStop(1,'#091525');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
-const barsW=cW*.62,colW=barsW/4,barW=colW*.50;
-const vpL=cL+cW*.68,vpW=cW*.30;
+const barsW=cW*.84,colW=barsW/4,barW=colW*.52;
 
 let zoomT;
-if(sliderDragging){zoomT=Math.max(0,Math.min(1,(cls-1.5)/(S1_CL-1.5)));zoomT=eIO(zoomT);}
+if(sliderDragging){zoomT=Math.max(0,Math.min(1,(cls-2)/(S1_CL-2)));zoomT=eIO(zoomT);}
 else{zoomT=t<.30?0:t>.70?1:eIO((t-.30)/.40);}
 const maxY=Y_START+(Y_END-Y_START)*zoomT;
 
-let tickStep;if(maxY<=3)tickStep=0.5;else if(maxY<=6)tickStep=1;else if(maxY<=12)tickStep=2;else tickStep=5;
+let tickStep;if(maxY<=3)tickStep=0.5;else if(maxY<=8)tickStep=2;else if(maxY<=20)tickStep=5;else if(maxY<=40)tickStep=10;else tickStep=15;
 
-const gridR=cL+colW*3.2;
-for(let tick=0;tick<=maxY;tick+=tickStep){const y=vY(tick,maxY);ctx.strokeStyle=GRD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cL,y);ctx.lineTo(gridR,y);ctx.stroke();if(tick>0){const label=tick%1===0?tick+'':tick.toFixed(1);txt(label,cL-8*dpr,y,{size:12,color:MED,align:'right'});}}
+const gridR=cL+colW*3.15;
+for(let tick=0;tick<=maxY;tick+=tickStep){const y=cB-(tick/maxY)*cH;ctx.strokeStyle=GRD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cL,y);ctx.lineTo(gridR,y);ctx.stroke();if(tick>0){const lb=tick%1===0?tick+'':tick.toFixed(1);txt(lb,cL-8*dpr,y,{size:11,color:MED,align:'right'});}}
 ctx.strokeStyle='rgba(26,54,100,0.3)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cL,cB);ctx.lineTo(gridR,cB);ctx.stroke();
-ctx.save();ctx.translate(10*dpr,(cT+cB)/2);ctx.rotate(-Math.PI/2);txt('CLOSINGS PER DAY',0,0,{size:12,color:BRT,weight:'700'});ctx.restore();
+ctx.save();ctx.translate(12*dpr,(cT+cB)/2);ctx.rotate(-Math.PI/2);txt('CONSULTS PER DAY',0,0,{size:11,color:BRT,weight:'700'});ctx.restore();
 
 // right Y-axis
-const rightAxisX=cL+colW*3.5+barW/2+12*dpr;
-const rTicks=[{v:0,l:'$0'},{v:500e6,l:'$500M'},{v:1e9,l:'$1B'},{v:1.5e9,l:'$1.5B'},{v:2e9,l:'$2B'}];
-rTicks.forEach(tk=>{const y=cB-(tk.v/2e9)*cH;ctx.strokeStyle='rgba(93,222,158,0.12)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+18*dpr,y,{size:10,color:'rgba(93,222,158,0.55)',align:'left'});});
-ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX,cB);ctx.lineTo(rightAxisX,cT);ctx.stroke();
+const rightAxisX=cL+colW*3.5+barW/2+14*dpr;
+[{v:0,l:'$0'},{v:500e6,l:'$500M'},{v:1e9,l:'$1B'},{v:1.5e9,l:'$1.5B'},{v:2e9,l:'$2B'}].forEach(tk=>{const y=cB-(tk.v/EV_MAX)*cH;ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+20*dpr,y,{size:10,color:'rgba(93,222,158,0.6)',align:'left'});});
+ctx.strokeStyle='rgba(93,222,158,0.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX,cB);ctx.lineTo(rightAxisX,cT);ctx.stroke();
 
-const conBar=(cls/R_CON)*intro,agtBar=(cls/R_AGT)*intro,clsBar=cls*intro,evVal=val*intro;
+const conVal=con*intro,agtVal=agt*intro,clsVal=cls*intro,evVal=val*intro;
 const bars=[
-{v:conBar,rawLabel:fN(con*intro)+'/day',c:BLU,b:BLB,l:'Consults',frac:'1/'+R_CON+' closing ea.',ra:false},
-{v:agtBar,rawLabel:fN(agt*intro)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:'1/'+R_AGT+' closing ea.',ra:false},
-{v:clsBar,rawLabel:fN(cls*intro)+'/day',c:GLD,b:GLB,l:'Closings',frac:'',ra:false},
-{v:evVal,rawLabel:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
+{v:conVal,ms:maxY,rl:fN(conVal)+'/day',c:BLU,b:BLB,l:'Consults',frac:R_CON+' per closing',ra:false},
+{v:agtVal,ms:maxY,rl:fN(agtVal)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:R_AGT+' per closing',ra:false},
+{v:clsVal,ms:maxY,rl:fN(clsVal)+'/day',c:GLD,b:GLB,l:'Closings',frac:'',ra:false},
+{v:evVal,ms:EV_MAX,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
 ];
 
 const barPos=[];
 bars.forEach((b,i)=>{
 const cx=cL+colW*(i+.5),bx=cx-barW/2;
-let bH;if(b.ra){bH=Math.max(8*dpr,(b.v/2e9)*cH);}else{bH=Math.max(8*dpr,(b.v/maxY)*cH);}
+const rawH=(b.v/b.ms)*cH;const bH=Math.max(8*dpr,Math.min(rawH,cH));
 const by=cB-bH,r=6*dpr;barPos.push({cx,bx,by,bH,barW});
 const gr=ctx.createLinearGradient(0,by,0,cB);gr.addColorStop(0,b.b);gr.addColorStop(.5,b.c);gr.addColorStop(1,sh(b.c,-30));
 rB(bx,by,barW,bH,r);ctx.fillStyle=gr;ctx.globalAlpha=intro;ctx.fill();ctx.globalAlpha=1;
 ctx.save();ctx.globalAlpha=.15*intro;ctx.shadowColor=b.b;ctx.shadowBlur=14*dpr;rB(bx,by,barW,bH,r);ctx.fillStyle=b.b;ctx.fill();ctx.restore();
-if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rawLabel,cx,by-14*dpr,{size:13,color:b.b,weight:'700'});ctx.restore();}
+if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rl,cx,by-14*dpr,{size:13,color:b.b,weight:'700'});ctx.restore();}
 b.l.split('\n').forEach((ln,li)=>{txt(ln,cx,cB+(18+li*15)*dpr,{size:12,color:MED,weight:'600'});});
 if(b.frac){const lines=b.l.split('\n').length;txt(b.frac,cx,cB+(20+lines*15)*dpr,{size:8,color:DIM});}
 });
 
-// funnel arrows 0→1, 1→2
-for(let i=0;i<2;i++){const x1=cL+colW*(i+.5)+barW/2+4*dpr,x2=cL+colW*(i+1.5)-barW/2-4*dpr;const mx=(x1+x2)/2,ay=cB-cH*.05,al=(x2-x1)*.50;ctx.save();ctx.globalAlpha=intro*.35;ctx.strokeStyle=DIM;ctx.lineWidth=1.5*dpr;ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-6*dpr,ay-3.5*dpr);ctx.lineTo(mx+al/2-6*dpr,ay+3.5*dpr);ctx.closePath();ctx.fillStyle=DIM;ctx.fill();ctx.restore();}
+// dotted lines: left bars → left Y-axis
+for(let i=0;i<3;i++){const bp=barPos[i];if(bp.bH<12*dpr)continue;ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=bars[i].b;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx,bp.by);ctx.lineTo(cL,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(cL,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=bars[i].b;ctx.fill();ctx.restore();}
+// dotted line: EV bar → right Y-axis
+{const bp=barPos[3];if(bp.bH>=12*dpr){ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=GRB;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx+bp.barW,bp.by);ctx.lineTo(rightAxisX,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(rightAxisX,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=GRB;ctx.fill();ctx.restore();}}
 
-// dashed ×20 arrow: closings → EV
-{const x1=cL+colW*2.5+barW/2+4*dpr,x2=cL+colW*3.5-barW/2-4*dpr;const mx=(x1+x2)/2,ay=cB-cH*.05,al=(x2-x1)*.50;ctx.save();ctx.globalAlpha=intro*.35;ctx.strokeStyle=GRN;ctx.lineWidth=1.5*dpr;ctx.setLineDash([4*dpr,3*dpr]);ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-6*dpr,ay-3.5*dpr);ctx.lineTo(mx+al/2-6*dpr,ay+3.5*dpr);ctx.closePath();ctx.fillStyle=GRN;ctx.fill();txt('×20',mx,ay-12*dpr,{size:9,color:GRB,weight:'700'});ctx.restore();}
+// funnel arrows
+for(let i=0;i<2;i++){const x1=cL+colW*(i+.5)+barW/2+4*dpr,x2=cL+colW*(i+1.5)-barW/2-4*dpr;const mx=(x1+x2)/2,ay=cB-cH*.04,al=(x2-x1)*.50;ctx.save();ctx.globalAlpha=intro*.35;ctx.strokeStyle=DIM;ctx.lineWidth=1.5*dpr;ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-6*dpr,ay-3.5*dpr);ctx.lineTo(mx+al/2-6*dpr,ay+3.5*dpr);ctx.closePath();ctx.fillStyle=DIM;ctx.fill();ctx.restore();}
 
-// dashed arrow: EV → value panel
-{const x1=cL+colW*3.5+barW/2+8*dpr,x2=vpL-8*dpr;const mx=(x1+x2)/2,ay=cB-cH*.35,al=(x2-x1)*.60;ctx.save();ctx.globalAlpha=intro*.3;ctx.strokeStyle=ACC;ctx.lineWidth=1.5*dpr;ctx.setLineDash([5*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-7*dpr,ay-4*dpr);ctx.lineTo(mx+al/2-7*dpr,ay+4*dpr);ctx.closePath();ctx.fillStyle=ACC;ctx.fill();ctx.restore();}
-
-// value panel
-{const px=vpL,py=cT+4*dpr,pw=vpW,ph=cH-8*dpr,cx=px+pw/2;
-rR(px,py,pw,ph,10*dpr);ctx.fillStyle='rgba(9,21,37,0.88)';ctx.fill();ctx.strokeStyle='rgba(42,108,184,0.18)';ctx.lineWidth=1;ctx.stroke();
-txt('VALUATION',cx,py+20*dpr,{size:16,color:GRN,weight:'700'});
-const vStr=fV(val*intro);const vYp=py+ph*.20;
-ctx.save();ctx.shadowColor=GRB;ctx.shadowBlur=24*dpr;ctx.globalAlpha=.35;txt(vStr,cx,vYp,{size:38,color:GRB,weight:'700'});ctx.restore();txt(vStr,cx,vYp,{size:38,color:GRB,weight:'700'});
-txt('Revenue',cx,py+ph*.34,{size:9,color:DIM,weight:'500'});txt(fV(rev*intro)+'/yr',cx,py+ph*.42,{size:18,color:BRT,weight:'600'});
-ctx.strokeStyle='rgba(90,138,184,0.25)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(px+16*dpr,py+ph*.52);ctx.lineTo(px+pw-16*dpr,py+ph*.52);ctx.stroke();
-const fteBoxY=py+ph*.55,fteBoxH=ph*.42;rR(px+8*dpr,fteBoxY,pw-16*dpr,fteBoxH,8*dpr);ctx.fillStyle='rgba(90,138,184,0.08)';ctx.fill();ctx.strokeStyle='rgba(90,138,184,0.20)';ctx.lineWidth=1;ctx.stroke();
-txt('AGENT REFERRAL SPECIALISTS',cx,fteBoxY+22*dpr,{size:13,color:FTE_C,weight:'700'});
-const fteY=fteBoxY+fteBoxH*.48;ctx.save();ctx.shadowColor='#8ab4d8';ctx.shadowBlur=20*dpr;ctx.globalAlpha=.3;txt(fte+'',cx,fteY,{size:42,color:'#8ab4d8',weight:'700'});ctx.restore();txt(fte+'',cx,fteY,{size:42,color:'#a0ccf0',weight:'700'});
-txt('FTEs',cx,fteY+28*dpr,{size:13,color:FTE_C,weight:'600'});txt(CON_PER_FTE+' consults per FTE',cx,fteBoxY+fteBoxH-12*dpr,{size:9,color:DIM});}
+// ×20 arrow
+{const x1=cL+colW*2.5+barW/2+4*dpr,x2=cL+colW*3.5-barW/2-4*dpr;const mx=(x1+x2)/2,ay=cB-cH*.04,al=(x2-x1)*.50;ctx.save();ctx.globalAlpha=intro*.4;ctx.strokeStyle=GRN;ctx.lineWidth=1.5*dpr;ctx.setLineDash([4*dpr,3*dpr]);ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-6*dpr,ay-3.5*dpr);ctx.lineTo(mx+al/2-6*dpr,ay+3.5*dpr);ctx.closePath();ctx.fillStyle=GRN;ctx.fill();txt('×20',mx,ay-12*dpr,{size:10,color:GRB,weight:'700'});ctx.restore();}
 
 // annotations
 if(!sliderDragging){
-if(t>=.05&&t<.24){const op=t<.08?(t-.05)/.03:(t>.20?Math.max(0,1-(t-.20)/.04):1);ctx.save();ctx.globalAlpha=op;const tx=cL+colW*1.5;txt('TODAY',tx,cT+16*dpr,{size:16,color:BRT,weight:'700'});txt('1 closing/day',tx,cT+36*dpr,{size:12,color:GLB,weight:'500'});txt(fV(FLOOR_VAL)+' valuation',tx,cT+54*dpr,{size:12,color:GRB,weight:'500'});ctx.restore();}
+if(t>=.05&&t<.24){const op=t<.08?(t-.05)/.03:(t>.20?Math.max(0,1-(t-.20)/.04):1);ctx.save();ctx.globalAlpha=op;const tx=cL+colW*1.5;txt('TODAY',tx,cT+16*dpr,{size:16,color:BRT,weight:'700'});txt('1 closing/day \u00b7 4.8 consults',tx,cT+36*dpr,{size:12,color:GLB,weight:'500'});txt(fV(FLOOR_VAL)+' enterprise value',tx,cT+54*dpr,{size:12,color:GRB,weight:'500'});ctx.restore();}
 if(t>=.20&&t<.46){const phase=(t-.20)/.26;const fadeIn=Math.min(1,phase/.12),fadeOut=phase>.80?Math.max(0,1-(phase-.80)/.20):1;const op=fadeIn*fadeOut;if(op>.01){const bp=barPos[0];const srcX=cL-40*dpr,beamY=bp.by+bp.bH*.3,dstX=bp.bx;drawFlow(srcX,beamY,dstX,beamY,0,0,t*3,op,ACC,'#fff3c4',true);ctx.save();ctx.globalAlpha=op;const labelX=Math.max(cL+60*dpr,(srcX+dstX)/2);txt('CAPITAL RAISE',labelX,beamY-24*dpr,{size:16,color:ACC,weight:'700'});txt('Funding \u2192 Marketing \u2192 Consults',labelX,beamY-6*dpr,{size:11,color:ACC,weight:'500'});ctx.restore();if(phase>.25){const splashOp=op*Math.min(1,(phase-.25)/.15)*.3;ctx.save();ctx.globalAlpha=splashOp;ctx.shadowColor=ACC;ctx.shadowBlur=20*dpr;rB(bp.bx-3*dpr,bp.by-10*dpr,bp.barW+6*dpr,bp.bH+10*dpr,8*dpr);ctx.fillStyle=ACC;ctx.fill();ctx.restore();}}}
-{const flowIntensity=Math.min(gCo,1)*Math.max(0,1-gAg*1.2)*(t>G_START?.8:0);if(flowIntensity>.01&&barPos.length>=2){const a=barPos[0],b2=barPos[1];const sx=a.cx+barW/2+4*dpr,ex=b2.cx-barW/2-4*dpr;const flowY=Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4;drawFlow(sx,flowY,ex,flowY,0,0,t*4,flowIntensity,BLU,BLB,false);}}
-{const flowIntensity=Math.min(gAg,1)*Math.max(0,1-gCl*1.2)*(t>(G_START+D_AGT)?.8:0);if(flowIntensity>.01&&barPos.length>=3){const a=barPos[1],b2=barPos[2];const sx=a.cx+barW/2+4*dpr,ex=b2.cx-barW/2-4*dpr;const flowY=Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4;drawFlow(sx,flowY,ex,flowY,0,0,t*4,flowIntensity,TEA,TEB,false);}}
-if(t>=.36&&t<.88){const op=Math.min(1,(t-.36)/.04)*(t>.84?Math.max(0,1-(t-.84)/.04):1);ctx.save();ctx.globalAlpha=op;txt('SCALING',cL+colW*1.5,cT+12*dpr,{size:11,color:ACC,weight:'600'});const growPct=(t-G_START)/(G_END-G_START);const pbW=140*dpr,pbH=4*dpr,pbX=cL+colW*1.5-pbW/2,pbY=cT+24*dpr;rR(pbX,pbY,pbW,pbH,2*dpr);ctx.fillStyle='rgba(26,54,100,0.3)';ctx.fill();rR(pbX,pbY,pbW*Math.min(1,Math.max(0,growPct)),pbH,2*dpr);ctx.fillStyle=ACC;ctx.fill();ctx.restore();}
-if(t>.86){const op=Math.min(1,(t-.86)/.07);ctx.save();ctx.globalAlpha=op;txt('TARGET: 36 Consults/Day',cL+colW*1.5,cT+14*dpr,{size:13,color:GLB,weight:'700'});txt(fV(TARGET_VAL)+' Enterprise Value',cL+colW*1.5,cT+32*dpr,{size:11,color:GRB,weight:'600'});ctx.restore();}
+{const fi=Math.min(gCo,1)*Math.max(0,1-gAg*1.2)*(t>G_START?.8:0);if(fi>.01&&barPos.length>=2){const a=barPos[0],b2=barPos[1];drawFlow(a.cx+barW/2+4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,b2.cx-barW/2-4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,0,0,t*4,fi,BLU,BLB,false);}}
+{const fi=Math.min(gAg,1)*Math.max(0,1-gCl*1.2)*(t>(G_START+D_AGT)?.8:0);if(fi>.01&&barPos.length>=3){const a=barPos[1],b2=barPos[2];drawFlow(a.cx+barW/2+4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,b2.cx-barW/2-4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,0,0,t*4,fi,TEA,TEB,false);}}
+if(t>=.36&&t<.88){const op=Math.min(1,(t-.36)/.04)*(t>.84?Math.max(0,1-(t-.84)/.04):1);ctx.save();ctx.globalAlpha=op;txt('SCALING',cL+colW*1.5,cT+12*dpr,{size:11,color:ACC,weight:'600'});const gp=(t-G_START)/(G_END-G_START);const pbW=140*dpr,pbH=4*dpr,pbX=cL+colW*1.5-pbW/2,pbY=cT+24*dpr;rR(pbX,pbY,pbW,pbH,2*dpr);ctx.fillStyle='rgba(26,54,100,0.3)';ctx.fill();rR(pbX,pbY,pbW*Math.min(1,Math.max(0,gp)),pbH,2*dpr);ctx.fillStyle=ACC;ctx.fill();ctx.restore();}
+if(t>.86){const op=Math.min(1,(t-.86)/.07);ctx.save();ctx.globalAlpha=op;txt('TARGET: 36 Closings/Day',cL+colW*1.5,cT+14*dpr,{size:13,color:GLB,weight:'700'});txt(fV(TARGET_VAL)+' Enterprise Value',cL+colW*1.5,cT+32*dpr,{size:11,color:GRB,weight:'600'});ctx.restore();}
 }
 }
 

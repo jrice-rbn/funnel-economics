@@ -133,10 +133,10 @@ const rightAxisX=cL+colW*3.5+barW/2+14*dpr;
 [{v:0,l:'$0'},{v:500e6,l:'$500M'},{v:1e9,l:'$1B'},{v:1.5e9,l:'$1.5B'},{v:2e9,l:'$2B'}].forEach(tk=>{const y=cB-(tk.v/EV_MAX)*cH;ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+20*dpr,y,{size:10,color:'rgba(93,222,158,0.6)',align:'left'});});
 ctx.strokeStyle='rgba(93,222,158,0.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX,cB);ctx.lineTo(rightAxisX,cT);ctx.stroke();
 
-const conVal=con*intro,agtVal=agt*intro,clsVal=cls*intro,evVal=val*intro;
+const conBar=(cls/R_CON)*intro,agtBar=(cls/R_AGT)*intro,clsVal=cls*intro,evVal=val*intro;
 const bars=[
-{v:conVal,ms:maxY,rl:fN(conVal)+'/day',c:BLU,b:BLB,l:'Consults',frac:R_CON+' per closing',ra:false},
-{v:agtVal,ms:maxY,rl:fN(agtVal)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:R_AGT+' per closing',ra:false},
+{v:conBar,ms:maxY,rl:fN(con*intro)+'/day',c:BLU,b:BLB,l:'Consults',frac:'1/'+R_CON+' closing ea.',ra:false},
+{v:agtBar,ms:maxY,rl:fN(agt*intro)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:'1/'+R_AGT+' closing ea.',ra:false},
 {v:clsVal,ms:maxY,rl:fN(clsVal)+'/day',c:GLD,b:GLB,l:'Closings',frac:'',ra:false},
 {v:evVal,ms:EV_MAX,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
 ];
@@ -154,8 +154,8 @@ b.l.split('\n').forEach((ln,li)=>{txt(ln,cx,cB+(18+li*15)*dpr,{size:12,color:MED
 if(b.frac){const lines=b.l.split('\n').length;txt(b.frac,cx,cB+(20+lines*15)*dpr,{size:8,color:DIM});}
 });
 
-// dotted lines: left bars → left Y-axis
-for(let i=0;i<3;i++){const bp=barPos[i];if(bp.bH<12*dpr)continue;ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=bars[i].b;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx,bp.by);ctx.lineTo(cL,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(cL,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=bars[i].b;ctx.fill();ctx.restore();}
+// dotted line: closings bar → left Y-axis
+{const bp=barPos[2];if(bp.bH>=12*dpr){ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=GLB;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx,bp.by);ctx.lineTo(cL,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(cL,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=GLB;ctx.fill();ctx.restore();}}
 // dotted line: EV bar → right Y-axis
 {const bp=barPos[3];if(bp.bH>=12*dpr){ctx.save();ctx.globalAlpha=0.35*intro;ctx.strokeStyle=GRB;ctx.lineWidth=1*dpr;ctx.setLineDash([3*dpr,4*dpr]);ctx.beginPath();ctx.moveTo(bp.bx+bp.barW,bp.by);ctx.lineTo(rightAxisX,bp.by);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(rightAxisX,bp.by,2.5*dpr,0,Math.PI*2);ctx.fillStyle=GRB;ctx.fill();ctx.restore();}}
 

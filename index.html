@@ -90,7 +90,7 @@ const CON_PER_FTE=8;
 const DUR=15000,G_START=0.36,G_END=0.86;
 const D_CON=0,D_AGT=0.10,D_CL=0.19;
 
-let animStart=null,paused=false,progress=0,sliderDragging=false,sliderCls=SLIDER_MIN_CL;
+let animStart=null,paused=false,progress=0,sliderDragging=false,sliderManual=false,sliderCls=SLIDER_MIN_CL;
 let effMult=1;
 let W,H,dpr,cL,cR,cT,cB,cW,cH;
 
@@ -118,13 +118,14 @@ const GRD='rgba(26,54,100,0.18)',DIM='#3d5a80',MED='#6a8db8',BRT='#c8daf0',ACC='
 function draw(t){
 ctx.clearRect(0,0,W,H);
 let intro,con,agt,cls,gCo,gAg,gCl;
-if(sliderDragging){intro=1;cls=sliderCls;con=cls*R_CON;agt=cls*R_AGT;const g=Math.max(0,Math.min(1,(cls-S0_CL)/(S1_CL-S0_CL)));gCo=gAg=gCl=g;}
+const useSlider=sliderDragging||(paused&&sliderManual);
+if(useSlider){intro=1;cls=sliderCls;con=cls*R_CON;agt=cls*R_AGT;const g=Math.max(0,Math.min(1,(cls-S0_CL)/(S1_CL-S0_CL)));gCo=gAg=gCl=g;}
 else{intro=t<.06?eO(t/.06):1;gCo=gf(t,D_CON);gAg=gf(t,D_AGT);gCl=gf(t,D_CL);con=S0_CO+(S1_CO-S0_CO)*gCo;agt=S0_AG+(S1_AG-S0_AG)*gAg;cls=S0_CL+(S1_CL-S0_CL)*gCl;}
 
 const effCls=S0_CL+(cls-S0_CL)*effMult;
 const effAgt=effCls*R_AGT;
 const val=calcVal(effCls);
-if(!sliderDragging){const sv=(cls-SLIDER_MIN_CL)/(SLIDER_MAX_CL-SLIDER_MIN_CL);slider.value=Math.round(Math.max(0,sv)*1000);sliderVal.textContent=fV(val);}
+if(!useSlider){const sv=(cls-SLIDER_MIN_CL)/(SLIDER_MAX_CL-SLIDER_MIN_CL);slider.value=Math.round(Math.max(0,sv)*1000);sliderVal.textContent=fV(val);}
 
 const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0d1f38');bg.addColorStop(1,'#091525');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
@@ -203,7 +204,7 @@ for(let i=0;i<2;i++){const x1=cL+colW*(i+.5)+barW/2+4*dpr,x2=cL+colW*(i+1.5)-bar
 {const x1=cL+colW*2.5+barW/2+4*dpr,x2=cL+colW*3.5-barW/2-4*dpr;const mx=(x1+x2)/2,ay=cB-cH*.04,al=(x2-x1)*.50;ctx.save();ctx.globalAlpha=intro*.4;ctx.strokeStyle=GRN;ctx.lineWidth=1.5*dpr;ctx.setLineDash([4*dpr,3*dpr]);ctx.beginPath();ctx.moveTo(mx-al/2,ay);ctx.lineTo(mx+al/2-5*dpr,ay);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(mx+al/2,ay);ctx.lineTo(mx+al/2-6*dpr,ay-3.5*dpr);ctx.lineTo(mx+al/2-6*dpr,ay+3.5*dpr);ctx.closePath();ctx.fillStyle=GRN;ctx.fill();txt('×20',mx,ay-12*dpr,{size:10,color:GRB,weight:'700'});ctx.restore();}
 
 // annotations
-if(!sliderDragging){
+if(!useSlider){
 if(t>=.05&&t<.24){const op=t<.08?(t-.05)/.03:(t>.20?Math.max(0,1-(t-.20)/.04):1);ctx.save();ctx.globalAlpha=op;const tx=cL+colW*1.5;txt('TODAY',tx,cT+16*dpr,{size:16,color:BRT,weight:'700'});txt('1 closing/day \u00b7 4.8 consults',tx,cT+36*dpr,{size:12,color:GLB,weight:'500'});txt(fV(FLOOR_VAL)+' enterprise value',tx,cT+54*dpr,{size:12,color:GRB,weight:'500'});ctx.restore();}
 if(t>=.20&&t<.46){const phase=(t-.20)/.26;const fadeIn=Math.min(1,phase/.12),fadeOut=phase>.80?Math.max(0,1-(phase-.80)/.20):1;const op=fadeIn*fadeOut;if(op>.01){const bp=barPos[0];const srcX=cL-40*dpr,beamY=bp.by+bp.bH*.3,dstX=bp.bx;drawFlow(srcX,beamY,dstX,beamY,0,0,t*3,op,ACC,'#fff3c4',true);ctx.save();ctx.globalAlpha=op;const labelX=Math.max(cL+60*dpr,(srcX+dstX)/2);txt('CAPITAL RAISE',labelX,beamY-24*dpr,{size:16,color:ACC,weight:'700'});txt('Funding \u2192 Marketing \u2192 Consults',labelX,beamY-6*dpr,{size:11,color:ACC,weight:'500'});ctx.restore();if(phase>.25){const splashOp=op*Math.min(1,(phase-.25)/.15)*.3;ctx.save();ctx.globalAlpha=splashOp;ctx.shadowColor=ACC;ctx.shadowBlur=20*dpr;rB(bp.bx-3*dpr,bp.by-10*dpr,bp.barW+6*dpr,bp.bH+10*dpr,8*dpr);ctx.fillStyle=ACC;ctx.fill();ctx.restore();}}}
 {const fi=Math.min(gCo,1)*Math.max(0,1-gAg*1.2)*(t>G_START?.8:0);if(fi>.01&&barPos.length>=2){const a=barPos[0],b2=barPos[1];drawFlow(a.cx+barW/2+4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,b2.cx-barW/2-4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,0,0,t*4,fi,BLU,BLB,false);}}
@@ -213,13 +214,18 @@ if(t>.86){const op=Math.min(1,(t-.86)/.07);const tC=S0_CL+(S1_CL-S0_CL)*effMult;
 }
 }
 
-slider.addEventListener('input',()=>{sliderDragging=true;if(!paused){paused=true;document.getElementById('btnPause').textContent='Resume';}const sv=slider.value/1000;sliderCls=SLIDER_MIN_CL+sv*(SLIDER_MAX_CL-SLIDER_MIN_CL);const eS=S0_CL+(sliderCls-S0_CL)*effMult;sliderVal.textContent=fV(calcVal(eS));draw(progress);});
-slider.addEventListener('mouseup',()=>{sliderDragging=false;});
-slider.addEventListener('touchend',()=>{sliderDragging=false;});
+slider.addEventListener('input',()=>{sliderDragging=true;sliderManual=true;if(!paused){paused=true;document.getElementById('btnPause').textContent='Resume';}const sv=slider.value/1000;sliderCls=SLIDER_MIN_CL+sv*(SLIDER_MAX_CL-SLIDER_MIN_CL);const eS=S0_CL+(sliderCls-S0_CL)*effMult;sliderVal.textContent=fV(calcVal(eS));draw(progress);});
+function endSliderDrag(){sliderDragging=false;}
+slider.addEventListener('mouseup',endSliderDrag);
+slider.addEventListener('touchend',endSliderDrag);
+slider.addEventListener('pointerup',endSliderDrag);
+slider.addEventListener('pointercancel',endSliderDrag);
+document.addEventListener('mouseup',()=>{if(sliderDragging)endSliderDrag();});
+document.addEventListener('pointerup',()=>{if(sliderDragging)endSliderDrag();});
 
 function animate(ts){if(!animStart)animStart=ts;if(!paused)progress=Math.min(1,(ts-animStart)/DUR);draw(progress);if(progress<1||paused)requestAnimationFrame(animate);else draw(1);}
-window.replay=function(){animStart=null;progress=0;paused=false;sliderDragging=false;document.getElementById('btnPause').textContent='Pause';requestAnimationFrame(animate);};
-window.togglePause=function(){const b=document.getElementById('btnPause');if(paused){paused=false;sliderDragging=false;animStart=performance.now()-progress*DUR;b.textContent='Pause';requestAnimationFrame(animate);}else{paused=true;b.textContent='Resume';}};
+window.replay=function(){animStart=null;progress=0;paused=false;sliderDragging=false;sliderManual=false;document.getElementById('btnPause').textContent='Pause';requestAnimationFrame(animate);};
+window.togglePause=function(){const b=document.getElementById('btnPause');if(paused){paused=false;sliderDragging=false;sliderManual=false;animStart=performance.now()-progress*DUR;b.textContent='Pause';requestAnimationFrame(animate);}else{paused=true;b.textContent='Resume';}};
 window.setEff=function(m,el){effMult=m;document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');const mC=S0_CL+(S1_CL-S0_CL)*m;document.getElementById('sliderMax').textContent=fV(calcVal(mC));draw(progress);};
 
 window.addEventListener('resize',()=>{resize();draw(progress);});

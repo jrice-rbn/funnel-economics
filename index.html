@@ -70,10 +70,10 @@ const HASH='cb63f124a0d5c1ca4291a243f8a553b56ea32395a56ae9bfd348ba1d4fdef013';
 async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function tryAuth(){const pw=document.getElementById('pwInput').value;if(await sha256(pw)===HASH){sessionStorage.setItem('kipp_auth','1');showApp();}else{document.getElementById('pwError').textContent='Incorrect password';document.getElementById('pwInput').value='';document.getElementById('pwInput').focus();}}
 document.getElementById('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')tryAuth();});
-function showApp(){document.getElementById('gate').style.display='none';document.getElementById('container').style.display='block';initApp();}
+let appInit=false;
+function showApp(){document.getElementById('gate').style.display='none';document.getElementById('container').style.display='block';requestAnimationFrame(()=>initApp());}
 if(sessionStorage.getItem('kipp_auth')==='1') showApp();
 
-let appInit=false;
 function initApp(){
 if(appInit)return; appInit=true;
 

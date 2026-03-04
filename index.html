@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Funnel Economics — RBN Growth Model</title>
+<title>RBN Business Value Model</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #091525; color: #d0dff0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
@@ -43,7 +43,7 @@
   <div class="error" id="pwError"></div>
 </div>
 <div id="container">
-  <h1>Funnel Economics</h1>
+  <h1>RBN Business Value Model</h1>
   <p style="text-align:center;font-size:14px;color:#5dde9e;margin-bottom:14px;font-weight:600;">Assumption: Enterprise Value 20x Revenue</p>
   <canvas id="chart"></canvas>
   <div class="slider-wrap">
@@ -170,8 +170,8 @@ if(b.frac){const lines=b.l.split('\n').length;txt(b.frac,cx,cB+(20+lines*15)*dpr
 });
 // value labels above first 3 bars
 for(let i=0;i<3;i++){const b=bars[i],bp=barPos[i];if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rl,bp.cx,bp.by-14*dpr,{size:13,color:b.b,weight:'700'});ctx.restore();}}
-// total EV label centered above both EV bars
-{const evBp=barPos[3];const ovCx=cL+colW*4.5;const centerX=(evBp.cx+ovCx)/2;const ovAmt0=Math.max(0,evVal-EV_MAX);const ovH0=ovAmt0>0?Math.max(8*dpr,(ovAmt0/evMax)*cH):0;const ovY0=cB-ovH0;const topY=Math.min(evBp.by,ovY0);if(evVal>.01){ctx.save();ctx.globalAlpha=intro;txt(fV(evVal),centerX,topY-14*dpr,{size:15,color:GRB,weight:'700'});ctx.restore();}}
+// total EV label above EV bar
+{const evBp=barPos[3];if(evVal>.01){ctx.save();ctx.globalAlpha=intro;txt(fV(evVal),evBp.cx,evBp.by-14*dpr,{size:15,color:GRB,weight:'700'});ctx.restore();}}
 // annual revenue inside EV bar
 {const evBp=barPos[3];const annRev=val/REV_MULT;if(evBp.bH>50*dpr&&annRev>1e6){const ry=evBp.by+evBp.bH*0.5;ctx.save();ctx.globalAlpha=intro*0.9;txt(fV(annRev),evBp.cx,ry-8*dpr,{size:12,color:'#fff',weight:'700'});txt('Annual Rev',evBp.cx,ry+10*dpr,{size:9,color:'rgba(255,255,255,0.7)',weight:'600'});ctx.restore();}}
 // ratio text inside consults bar
@@ -181,9 +181,9 @@ for(let i=0;i<3;i++){const b=bars[i],bp=barPos[i];if(b.v>.01){ctx.save();ctx.glo
 // overflow bar (5th bar)
 {const ovAmt=Math.max(0,evVal-EV_MAX);const ovCx=cL+colW*4.5,ovBx=ovCx-barW/2;
 if(ovAmt>0){const ovH=Math.max(8*dpr,(ovAmt/evMax)*cH);const ovY=cB-ovH,r=6*dpr;
-const oGr=ctx.createLinearGradient(0,ovY,0,cB);oGr.addColorStop(0,'#8af5c0');oGr.addColorStop(.4,GRB);oGr.addColorStop(1,GRN);
+const oGr=ctx.createLinearGradient(0,ovY,0,cB);oGr.addColorStop(0,GRB);oGr.addColorStop(.5,GRN);oGr.addColorStop(1,sh(GRN,-30));
 rB(ovBx,ovY,barW,ovH,r);ctx.fillStyle=oGr;ctx.globalAlpha=intro;ctx.fill();ctx.globalAlpha=1;
-ctx.save();ctx.globalAlpha=.2*intro;ctx.shadowColor='#8af5c0';ctx.shadowBlur=18*dpr;rB(ovBx,ovY,barW,ovH,r);ctx.fillStyle='#8af5c0';ctx.fill();ctx.restore();}
+ctx.save();ctx.globalAlpha=.15*intro;ctx.shadowColor=GRB;ctx.shadowBlur=14*dpr;rB(ovBx,ovY,barW,ovH,r);ctx.fillStyle=GRB;ctx.fill();ctx.restore();}
 txt('EV Over',ovCx,cB+18*dpr,{size:12,color:MED,weight:'600'});txt('$2B',ovCx,cB+33*dpr,{size:12,color:MED,weight:'600'});}
 
 // ARS FTEs badge

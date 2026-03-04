@@ -128,19 +128,18 @@ if(!sliderDragging){const sv=(cls-SLIDER_MIN_CL)/(SLIDER_MAX_CL-SLIDER_MIN_CL);s
 
 const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0d1f38');bg.addColorStop(1,'#091525');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
-const barsW=cW*.84,colW=barsW/4,barW=colW*.52;
+const barsW=cW*.88,colW=barsW/5,barW=colW*.52;
 
-const maxY=effMult>1?75*effMult*2:75;
-let tickStep;if(maxY<=80)tickStep=15;else tickStep=50;
+const maxY=75;const tickStep=15;
 
-const gridR=cL+colW*3.15;
+const gridR=cL+colW*2.85;
 for(let tick=0;tick<=maxY;tick+=tickStep){const y=cB-(tick/maxY)*cH;ctx.strokeStyle=GRD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cL,y);ctx.lineTo(gridR,y);ctx.stroke();if(tick>0){const lb=tick%1===0?tick+'':tick.toFixed(1);txt(lb,cL-8*dpr,y,{size:11,color:MED,align:'right'});}}
 ctx.strokeStyle='rgba(26,54,100,0.3)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cL,cB);ctx.lineTo(gridR,cB);ctx.stroke();
 ctx.save();ctx.translate(12*dpr,(cT+cB)/2);ctx.rotate(-Math.PI/2);txt('CONSULTS PER DAY',0,0,{size:11,color:BRT,weight:'700'});ctx.restore();
 
-// right Y-axis (dynamic)
-const mEFC=S0_CL+(S1_CL-S0_CL)*effMult;const mEVF=calcVal(mEFC);const evMax=Math.ceil(mEVF/5e8)*5e8;
-const rightAxisX=cL+colW*3.5+barW/2+14*dpr;
+// right Y-axis (fixed at $2B)
+const evMax=EV_MAX;
+const rightAxisX=cL+colW*4.5+barW/2+14*dpr;
 const rTicks=[];for(let v=0;v<=evMax;v+=5e8){rTicks.push({v:v,l:v===0?'$0':fV(v)});}
 rTicks.forEach(tk=>{const y=cB-(tk.v/evMax)*cH;ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+20*dpr,y,{size:10,color:'rgba(93,222,158,0.6)',align:'left'});});
 ctx.strokeStyle='rgba(93,222,158,0.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX,cB);ctx.lineTo(rightAxisX,cT);ctx.stroke();
@@ -150,7 +149,7 @@ const bars=[
 {v:conBar,ms:maxY,rl:fN(con*intro)+'/day',c:BLU,b:BLB,l:'Consults',frac:'1/'+R_CON+' closing ea.',ra:false},
 {v:agtBar,ms:maxY,rl:fN(effAgt*intro)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:'1/'+R_AGT+' closing ea.',ra:false},
 {v:clsVal,ms:maxY,rl:fN(clsVal)+'/day',c:GLD,b:GLB,l:'Closings',frac:'',ra:false},
-{v:evVal,ms:evMax,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
+{v:Math.min(evVal,EV_MAX),ms:evMax,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
 ];
 
 const barPos=[];
@@ -161,10 +160,21 @@ const by=cB-bH,r=6*dpr;barPos.push({cx,bx,by,bH,barW});
 const gr=ctx.createLinearGradient(0,by,0,cB);gr.addColorStop(0,b.b);gr.addColorStop(.5,b.c);gr.addColorStop(1,sh(b.c,-30));
 rB(bx,by,barW,bH,r);ctx.fillStyle=gr;ctx.globalAlpha=intro;ctx.fill();ctx.globalAlpha=1;
 ctx.save();ctx.globalAlpha=.15*intro;ctx.shadowColor=b.b;ctx.shadowBlur=14*dpr;rB(bx,by,barW,bH,r);ctx.fillStyle=b.b;ctx.fill();ctx.restore();
-if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rl,cx,by-14*dpr,{size:13,color:b.b,weight:'700'});ctx.restore();}
 b.l.split('\n').forEach((ln,li)=>{txt(ln,cx,cB+(18+li*15)*dpr,{size:12,color:MED,weight:'600'});});
 if(b.frac){const lines=b.l.split('\n').length;txt(b.frac,cx,cB+(20+lines*15)*dpr,{size:8,color:DIM});}
 });
+// value labels above first 4 bars
+for(let i=0;i<4;i++){const b=bars[i],bp=barPos[i];if(b.v>.01){ctx.save();ctx.globalAlpha=intro;txt(b.rl,bp.cx,bp.by-14*dpr,{size:13,color:b.b,weight:'700'});ctx.restore();}}
+// annual revenue inside EV bar
+{const evBp=barPos[3];const annRev=val/REV_MULT;if(evBp.bH>50*dpr&&annRev>1e6){const ry=evBp.by+evBp.bH*0.5;ctx.save();ctx.globalAlpha=intro*0.9;txt(fV(annRev),evBp.cx,ry-8*dpr,{size:12,color:'#fff',weight:'700'});txt('Annual Rev',evBp.cx,ry+10*dpr,{size:9,color:'rgba(255,255,255,0.7)',weight:'600'});ctx.restore();}}
+// overflow bar (5th bar)
+{const ovAmt=Math.max(0,evVal-EV_MAX);const ovCx=cL+colW*4.5,ovBx=ovCx-barW/2;
+if(ovAmt>0){const ovH=Math.max(8*dpr,(ovAmt/evMax)*cH);const ovY=cB-ovH,r=6*dpr;
+const oGr=ctx.createLinearGradient(0,ovY,0,cB);oGr.addColorStop(0,'#8af5c0');oGr.addColorStop(.4,GRB);oGr.addColorStop(1,GRN);
+rB(ovBx,ovY,barW,ovH,r);ctx.fillStyle=oGr;ctx.globalAlpha=intro;ctx.fill();ctx.globalAlpha=1;
+ctx.save();ctx.globalAlpha=.2*intro;ctx.shadowColor='#8af5c0';ctx.shadowBlur=18*dpr;rB(ovBx,ovY,barW,ovH,r);ctx.fillStyle='#8af5c0';ctx.fill();ctx.restore();
+ctx.save();ctx.globalAlpha=intro;txt('+'+fV(ovAmt),ovCx,ovY-14*dpr,{size:13,color:'#8af5c0',weight:'700'});ctx.restore();}
+txt('EV Over',ovCx,cB+18*dpr,{size:12,color:MED,weight:'600'});txt('$2B',ovCx,cB+33*dpr,{size:12,color:MED,weight:'600'});}
 
 // ARS FTEs badge
 {const fte=Math.max(1,Math.ceil((con*intro)/CON_PER_FTE));const bp=barPos[0];const ft=fte+' ARS FTE'+(fte!==1?'s':'');const badgeY=cB+56*dpr,badgeH=20*dpr,badgePad=14*dpr;ctx.save();ctx.font=`700 ${10*dpr}px -apple-system,BlinkMacSystemFont,sans-serif`;const tw=ctx.measureText(ft).width;ctx.restore();const badgeW=tw+badgePad*2,badgeX=bp.cx-badgeW/2;ctx.save();ctx.globalAlpha=intro*.85;rR(badgeX,badgeY,badgeW,badgeH,badgeH/2);ctx.fillStyle='rgba(42,108,184,0.25)';ctx.strokeStyle='rgba(58,130,212,0.5)';ctx.lineWidth=1*dpr;ctx.fill();ctx.stroke();ctx.restore();ctx.save();ctx.globalAlpha=intro;txt(ft,bp.cx,badgeY+badgeH/2,{size:10,color:BLB,weight:'700'});ctx.restore();}

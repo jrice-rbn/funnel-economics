@@ -130,8 +130,8 @@ const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0d1f38');bg.addCo
 
 const barsW=cW*.84,colW=barsW/4,barW=colW*.52;
 
-const maxY=75*effMult;
-let tickStep;if(maxY<=80)tickStep=15;else if(maxY<=120)tickStep=20;else tickStep=30;
+const maxY=effMult>1?75*effMult*2:75;
+let tickStep;if(maxY<=80)tickStep=15;else tickStep=50;
 
 const gridR=cL+colW*3.15;
 for(let tick=0;tick<=maxY;tick+=tickStep){const y=cB-(tick/maxY)*cH;ctx.strokeStyle=GRD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cL,y);ctx.lineTo(gridR,y);ctx.stroke();if(tick>0){const lb=tick%1===0?tick+'':tick.toFixed(1);txt(lb,cL-8*dpr,y,{size:11,color:MED,align:'right'});}}

@@ -28,6 +28,11 @@
   .controls { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
   .controls button { background: rgba(26,54,100,0.3); border: 1px solid rgba(26,54,100,0.6); color: #a0b8d8; padding: 10px 24px; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
   .controls button:hover { background: rgba(26,54,100,0.5); border-color: rgba(42,108,184,0.7); color: #fff; }
+  .scenarios { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 6px; }
+  .scenarios label { font-size: 10px; font-weight: 700; color: #6a8db8; letter-spacing: 1.5px; text-transform: uppercase; }
+  .scenario-btn { background: rgba(26,54,100,0.2); border: 1px solid rgba(26,54,100,0.5); color: #6a8db8; padding: 7px 18px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.25s; }
+  .scenario-btn:hover { background: rgba(26,54,100,0.4); border-color: rgba(42,108,184,0.6); color: #c8daf0; }
+  .scenario-btn.active { background: rgba(46,204,113,0.15); border-color: rgba(46,204,113,0.5); color: #5dde9e; box-shadow: 0 0 12px rgba(46,204,113,0.15); }
 </style>
 </head>
 <body>
@@ -39,8 +44,7 @@
 </div>
 <div id="container">
   <h1>Funnel Economics</h1>
-  <p style="text-align:center;font-size:14px;color:#5dde9e;margin-bottom:4px;font-weight:600;">20x Revenue is Enterprise Value</p>
-  <p style="text-align:center;font-size:12px;color:#8a5a2a;margin-bottom:14px;font-style:italic;opacity:0.7;">Draft — Determine Valuation Math</p>
+  <p style="text-align:center;font-size:14px;color:#5dde9e;margin-bottom:14px;font-weight:600;">Assumption: Enterprise Value 20x Revenue</p>
   <canvas id="chart"></canvas>
   <div class="slider-wrap">
     <div class="slider-row">
@@ -48,7 +52,13 @@
       <input type="range" id="valSlider" min="0" max="1000" value="0">
       <span class="slider-val" id="sliderVal">$150M</span>
     </div>
-    <div class="slider-endpoints"><span>$150M</span><span>$2.0B</span></div>
+    <div class="slider-endpoints"><span id="sliderMin">$150M</span><span id="sliderMax">$2.0B</span></div>
+  </div>
+  <div class="scenarios">
+    <label>Scenario</label>
+    <button class="scenario-btn active" onclick="setEff(1,this)">Base</button>
+    <button class="scenario-btn" onclick="setEff(1.5,this)">1.5x Efficiency</button>
+    <button class="scenario-btn" onclick="setEff(2,this)">2x Efficiency</button>
   </div>
   <div class="controls">
     <button onclick="replay()">Replay</button>
@@ -81,13 +91,14 @@ const DUR=15000,G_START=0.36,G_END=0.86;
 const D_CON=0,D_AGT=0.10,D_CL=0.19;
 
 let animStart=null,paused=false,progress=0,sliderDragging=false,sliderCls=SLIDER_MIN_CL;
+let effMult=1;
 let W,H,dpr,cL,cR,cT,cB,cW,cH;
 
 function resize(){dpr=window.devicePixelRatio||1;const r=canvas.getBoundingClientRect();W=r.width*dpr;H=(r.width/1.72)*dpr;canvas.width=W;canvas.height=H;canvas.style.height=(H/dpr)+'px';cL=W*.08;cR=W*.96;cT=H*.06;cB=H*.80;cW=cR-cL;cH=cB-cT;}
 function eO(t){return 1-Math.pow(1-t,3);}
 function eIO(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
 function gf(t,d){const s=G_START+d;if(t<s)return 0;if(t>G_END)return 1;return eIO((t-s)/(G_END-s));}
-function calcVal(c){const f=Math.max(0,Math.min(1,(c-S0_CL)/(S1_CL-S0_CL)));return FLOOR_VAL+f*(TARGET_VAL-FLOOR_VAL);}
+function calcVal(c){const f=Math.max(0,(c-S0_CL)/(S1_CL-S0_CL));return FLOOR_VAL+f*(TARGET_VAL-FLOOR_VAL);}
 
 function txt(s,x,y,o){const{size=14,color='#6a8db8',align='center',baseline='middle',weight='400'}=o||{};ctx.save();ctx.font=`${weight} ${size*dpr}px -apple-system,BlinkMacSystemFont,sans-serif`;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline=baseline;ctx.fillText(s,x,y);ctx.restore();}
 function rR(x,y,w,h,r){if(w<=0||h<=0)return;r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
@@ -110,36 +121,41 @@ let intro,con,agt,cls,gCo,gAg,gCl;
 if(sliderDragging){intro=1;cls=sliderCls;con=cls*R_CON;agt=cls*R_AGT;const g=Math.max(0,Math.min(1,(cls-S0_CL)/(S1_CL-S0_CL)));gCo=gAg=gCl=g;}
 else{intro=t<.06?eO(t/.06):1;gCo=gf(t,D_CON);gAg=gf(t,D_AGT);gCl=gf(t,D_CL);con=S0_CO+(S1_CO-S0_CO)*gCo;agt=S0_AG+(S1_AG-S0_AG)*gAg;cls=S0_CL+(S1_CL-S0_CL)*gCl;}
 
-const val=calcVal(cls);
+const effCls=S0_CL+(cls-S0_CL)*effMult;
+const effAgt=effCls*R_AGT;
+const val=calcVal(effCls);
 if(!sliderDragging){const sv=(cls-SLIDER_MIN_CL)/(SLIDER_MAX_CL-SLIDER_MIN_CL);slider.value=Math.round(Math.max(0,sv)*1000);sliderVal.textContent=fV(val);}
 
 const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0d1f38');bg.addColorStop(1,'#091525');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
 const barsW=cW*.84,colW=barsW/4,barW=colW*.52;
 
+const yEnd=Math.max(Y_END,(S0_CL+(S1_CL-S0_CL)*effMult)*1.15);
 let zoomT;
 if(sliderDragging){zoomT=Math.max(0,Math.min(1,(cls-2)/(S1_CL-2)));zoomT=eIO(zoomT);}
 else{zoomT=t<.30?0:t>.70?1:eIO((t-.30)/.40);}
-const maxY=Y_START+(Y_END-Y_START)*zoomT;
+const maxY=Y_START+(yEnd-Y_START)*zoomT;
 
-let tickStep;if(maxY<=3)tickStep=0.5;else if(maxY<=8)tickStep=2;else if(maxY<=20)tickStep=5;else if(maxY<=40)tickStep=10;else tickStep=15;
+let tickStep;if(maxY<=3)tickStep=0.5;else if(maxY<=8)tickStep=2;else if(maxY<=20)tickStep=5;else if(maxY<=50)tickStep=10;else if(maxY<=80)tickStep=15;else tickStep=20;
 
 const gridR=cL+colW*3.15;
 for(let tick=0;tick<=maxY;tick+=tickStep){const y=cB-(tick/maxY)*cH;ctx.strokeStyle=GRD;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cL,y);ctx.lineTo(gridR,y);ctx.stroke();if(tick>0){const lb=tick%1===0?tick+'':tick.toFixed(1);txt(lb,cL-8*dpr,y,{size:11,color:MED,align:'right'});}}
 ctx.strokeStyle='rgba(26,54,100,0.3)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cL,cB);ctx.lineTo(gridR,cB);ctx.stroke();
 ctx.save();ctx.translate(12*dpr,(cT+cB)/2);ctx.rotate(-Math.PI/2);txt('CONSULTS PER DAY',0,0,{size:11,color:BRT,weight:'700'});ctx.restore();
 
-// right Y-axis
+// right Y-axis (dynamic)
+const mEFC=S0_CL+(S1_CL-S0_CL)*effMult;const mEVF=calcVal(mEFC);const evMax=Math.ceil(mEVF/5e8)*5e8;
 const rightAxisX=cL+colW*3.5+barW/2+14*dpr;
-[{v:0,l:'$0'},{v:500e6,l:'$500M'},{v:1e9,l:'$1B'},{v:1.5e9,l:'$1.5B'},{v:2e9,l:'$2B'}].forEach(tk=>{const y=cB-(tk.v/EV_MAX)*cH;ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+20*dpr,y,{size:10,color:'rgba(93,222,158,0.6)',align:'left'});});
+const rTicks=[];for(let v=0;v<=evMax;v+=5e8){rTicks.push({v:v,l:v===0?'$0':fV(v)});}
+rTicks.forEach(tk=>{const y=cB-(tk.v/evMax)*cH;ctx.strokeStyle='rgba(93,222,158,0.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX-3*dpr,y);ctx.lineTo(rightAxisX+3*dpr,y);ctx.stroke();txt(tk.l,rightAxisX+20*dpr,y,{size:10,color:'rgba(93,222,158,0.6)',align:'left'});});
 ctx.strokeStyle='rgba(93,222,158,0.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rightAxisX,cB);ctx.lineTo(rightAxisX,cT);ctx.stroke();
 
-const conBar=(cls/R_CON)*intro,agtBar=(cls/R_AGT)*intro,clsVal=cls*intro,evVal=val*intro;
+const conBar=(cls/R_CON)*intro,agtBar=(effCls/R_AGT)*intro,clsVal=effCls*intro,evVal=val*intro;
 const bars=[
 {v:conBar,ms:maxY,rl:fN(con*intro)+'/day',c:BLU,b:BLB,l:'Consults',frac:'1/'+R_CON+' closing ea.',ra:false},
-{v:agtBar,ms:maxY,rl:fN(agt*intro)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:'1/'+R_AGT+' closing ea.',ra:false},
+{v:agtBar,ms:maxY,rl:fN(effAgt*intro)+'/day',c:TEA,b:TEB,l:'Agent\nConnections',frac:'1/'+R_AGT+' closing ea.',ra:false},
 {v:clsVal,ms:maxY,rl:fN(clsVal)+'/day',c:GLD,b:GLB,l:'Closings',frac:'',ra:false},
-{v:evVal,ms:EV_MAX,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
+{v:evVal,ms:evMax,rl:fV(evVal),c:GRN,b:GRB,l:'Enterprise\nValue',frac:'20x Revenue',ra:true},
 ];
 
 const barPos=[];
@@ -176,17 +192,18 @@ if(t>=.20&&t<.46){const phase=(t-.20)/.26;const fadeIn=Math.min(1,phase/.12),fad
 {const fi=Math.min(gCo,1)*Math.max(0,1-gAg*1.2)*(t>G_START?.8:0);if(fi>.01&&barPos.length>=2){const a=barPos[0],b2=barPos[1];drawFlow(a.cx+barW/2+4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,b2.cx-barW/2-4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,0,0,t*4,fi,BLU,BLB,false);}}
 {const fi=Math.min(gAg,1)*Math.max(0,1-gCl*1.2)*(t>(G_START+D_AGT)?.8:0);if(fi>.01&&barPos.length>=3){const a=barPos[1],b2=barPos[2];drawFlow(a.cx+barW/2+4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,b2.cx-barW/2-4*dpr,Math.min(a.by,b2.by)+Math.max(a.bH,b2.bH)*.4,0,0,t*4,fi,TEA,TEB,false);}}
 if(t>=.36&&t<.88){const op=Math.min(1,(t-.36)/.04)*(t>.84?Math.max(0,1-(t-.84)/.04):1);ctx.save();ctx.globalAlpha=op;txt('SCALING',cL+colW*1.5,cT+12*dpr,{size:11,color:ACC,weight:'600'});const gp=(t-G_START)/(G_END-G_START);const pbW=140*dpr,pbH=4*dpr,pbX=cL+colW*1.5-pbW/2,pbY=cT+24*dpr;rR(pbX,pbY,pbW,pbH,2*dpr);ctx.fillStyle='rgba(26,54,100,0.3)';ctx.fill();rR(pbX,pbY,pbW*Math.min(1,Math.max(0,gp)),pbH,2*dpr);ctx.fillStyle=ACC;ctx.fill();ctx.restore();}
-if(t>.86){const op=Math.min(1,(t-.86)/.07);ctx.save();ctx.globalAlpha=op;txt('TARGET: 36 Closings/Day',cL+colW*1.5,cT+14*dpr,{size:13,color:GLB,weight:'700'});txt(fV(TARGET_VAL)+' Enterprise Value',cL+colW*1.5,cT+32*dpr,{size:11,color:GRB,weight:'600'});ctx.restore();}
+if(t>.86){const op=Math.min(1,(t-.86)/.07);const tC=S0_CL+(S1_CL-S0_CL)*effMult;const tV=calcVal(tC);ctx.save();ctx.globalAlpha=op;txt('TARGET: '+Math.round(tC)+' Closings/Day',cL+colW*1.5,cT+14*dpr,{size:13,color:GLB,weight:'700'});txt(fV(tV)+' Enterprise Value',cL+colW*1.5,cT+32*dpr,{size:11,color:GRB,weight:'600'});ctx.restore();}
 }
 }
 
-slider.addEventListener('input',()=>{sliderDragging=true;if(!paused){paused=true;document.getElementById('btnPause').textContent='Resume';}const sv=slider.value/1000;sliderCls=SLIDER_MIN_CL+sv*(SLIDER_MAX_CL-SLIDER_MIN_CL);sliderVal.textContent=fV(calcVal(sliderCls));draw(progress);});
+slider.addEventListener('input',()=>{sliderDragging=true;if(!paused){paused=true;document.getElementById('btnPause').textContent='Resume';}const sv=slider.value/1000;sliderCls=SLIDER_MIN_CL+sv*(SLIDER_MAX_CL-SLIDER_MIN_CL);const eS=S0_CL+(sliderCls-S0_CL)*effMult;sliderVal.textContent=fV(calcVal(eS));draw(progress);});
 slider.addEventListener('mouseup',()=>{sliderDragging=false;});
 slider.addEventListener('touchend',()=>{sliderDragging=false;});
 
 function animate(ts){if(!animStart)animStart=ts;if(!paused)progress=Math.min(1,(ts-animStart)/DUR);draw(progress);if(progress<1||paused)requestAnimationFrame(animate);else draw(1);}
 window.replay=function(){animStart=null;progress=0;paused=false;sliderDragging=false;document.getElementById('btnPause').textContent='Pause';requestAnimationFrame(animate);};
 window.togglePause=function(){const b=document.getElementById('btnPause');if(paused){paused=false;sliderDragging=false;animStart=performance.now()-progress*DUR;b.textContent='Pause';requestAnimationFrame(animate);}else{paused=true;b.textContent='Resume';}};
+window.setEff=function(m,el){effMult=m;document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');const mC=S0_CL+(S1_CL-S0_CL)*m;document.getElementById('sliderMax').textContent=fV(calcVal(mC));draw(progress);};
 
 window.addEventListener('resize',()=>{resize();draw(progress);});
 resize();requestAnimationFrame(animate);
